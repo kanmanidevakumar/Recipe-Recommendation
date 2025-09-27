@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Recipe Recommendation System</title>
+    <style>
+        body { font-family: Arial; text-align: center; margin: 20px; }
+        video, canvas { border: 2px solid #333; width: 300px; height: 300px; display: block; margin: auto; }
+        button { margin-top: 10px; padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background-color: #218838; }
+        #result { margin-top: 20px; font-size: 18px; }
+        a { display: block; margin-top: 10px; font-size: 16px; color: #007bff; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <h1>Recipe Recommendation System</h1>
+    <video id="video" autoplay></video>
+    <button id="capture">Capture Image</button>
+    <canvas id="canvas"></canvas>
+    <div id="result"></div>
+
+    <script>
+        const video = document.getElementById("video");
+        const canvas = document.getElementById("canvas");
+        const captureButton = document.getElementById("capture");
+        const resultDiv = document.getElementById("result");
+
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => { video.srcObject = stream; })
+            .catch(error => { console.error("Webcam error:", error); });
+
+        captureButton.addEventListener("click", () => {
+            const ctx = canvas.getContext("2d");
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const imageData = canvas.toDataURL("image/png");
+
+            fetch("/predict", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ image: imageData })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.recipe_url) {
+                    resultDiv.innerHTML = `🍽️ <strong>${data.ingredient}</strong><br><a href="${data.recipe_url}" target="_blank">View Recipe</a>`;
+                } else {
+                    resultDiv.innerHTML = "No recipe found.";
+                }
+            })
+            .catch(err => {
+                console.error("Prediction error:", err);
+                resultDiv.innerHTML = "Error fetching recipe!";
+            });
+        });
+    </script>
+</body>
+</html>
